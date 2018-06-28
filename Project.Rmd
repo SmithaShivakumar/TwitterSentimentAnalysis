@@ -1,0 +1,289 @@
+---
+title: "Twitter Sentiment Analysis for CVS Health"
+output:
+  html_document: default
+  html_notebook: default
+---
+
+This is a Notebook for Twitter Sentiment Analysis on CVS Health and CVS Aetna merger. 
+
+
+```{r, message=F, warning=F}
+# Load Requried Packages
+library("SnowballC")
+library("tm")
+library("twitteR")
+library("syuzhet")
+library("wordcloud")
+```
+
+Setting up Twitter OAuth
+
+
+```{r}
+consumer_key <-  'elVqMFVWgCUQBEDOR7vsfFsI7'
+consumer_secret <- '5LizGPvZIZoHYojLhYFrfFXm2KjjIeCPvFwNiIhcOfdnAGzrKO'
+access_token <- '380945634-TLTP7C0llQjRu4S5jPJvHKadGJnQ0V8m9DPrAhur'
+access_secret <- 'XX26mpkPytRrlKi38tQDdE36RgE9s04KA8Q2FEsPYg14B'
+setup_twitter_oauth(consumer_key,consumer_secret,access_token,access_secret)
+
+tweets <- userTimeline("CVSHealth", n=200)
+
+n.tweet <- length(tweets)
+```
+
+```{r}
+#save text
+tweets_text <- sapply(tweets, function(x) x$getText())
+
+#create corpus - Constructs a text document collection (corpus).
+tweets_text_corpus <- Corpus(VectorSource(tweets_text))
+```
+
+```{r}
+tweets_text_corpus <- tm_map(tweets_text_corpus, function(x) iconv(enc2utf8(x), sub = "byte"))
+tweets_text_corpus <- tm_map(tweets_text_corpus, content_transformer(tolower)) 
+tweets_text_corpus <- tm_map(tweets_text_corpus, removePunctuation)
+tweets_text_corpus <- tm_map(tweets_text_corpus, function(x)removeWords(x,stopwords()))
+wordcloud(as.character(tweets_text_corpus))
+
+```
+
+
+
+
+```{r, echo= FALSE}
+# num_tweets <- 200
+# r_stats <- searchTwitter(c("#CVSAetna"), n=num_tweets) #, since = "2016-01-01", until = "2018-06-09")
+# 
+# head(r_stats)
+```
+
+
+
+```{r }
+tweets.df <- twListToDF(tweets) 
+ 
+# head(tweets.df)
+# 
+# head(tweets.df$text)
+```
+
+We checked the Twitter Sentiments to see how that is affecting the deal : http://rpubs.com/SShivakumar/TwitterSentimentAnalysis  
+
+
+```{r, echo= FALSE}
+# r_stats.df <- twListToDF(r_stats) 
+#  
+# head(r_stats.df)
+# 
+# head(r_stats.df$text)
+```
+
+
+
+```{r}
+tweets.df2 <- gsub("http.*","",tweets.df$text)
+ 
+tweets.df2 <- gsub("https.*","",tweets.df2)
+ 
+tweets.df2 <- gsub("#.*","",tweets.df2)
+ 
+tweets.df2 <- gsub("@.*","",tweets.df2)
+
+```
+
+
+```{r, echo= FALSE}
+# r_stats.df2 <- gsub("http.*","",r_stats.df$text)
+#  
+# r_stats.df2 <- gsub("https.*","",r_stats.df2)
+#  
+# r_stats.df2 <- gsub("#.*","",r_stats.df2)
+#  
+# r_stats.df2 <- gsub("@.*","",r_stats.df2)
+# 
+# head(r_stats.df2)
+
+```
+
+
+
+```{r}
+word.df <- as.vector(tweets.df2)
+ 
+emotion.df <- get_nrc_sentiment(word.df)
+ 
+emotion.df2 <- cbind(tweets.df2, emotion.df) 
+ 
+head(emotion.df2)
+
+```
+
+
+```{r, echo= FALSE}
+# word_rstats.df <- as.vector(r_stats.df2)
+#  
+# emotion_rstats.df <- get_nrc_sentiment(word_rstats.df)
+#  
+# emotion_rstats.df2 <- cbind(r_stats.df2, emotion_rstats.df) 
+#  
+# head(emotion_rstats.df2)
+
+```
+
+```{r}
+sent.value <- get_sentiment(word.df)
+ 
+most.positive <- word.df[sent.value == max(sent.value)]
+ 
+most.positive
+
+```
+
+```{r, echo= FALSE}
+# sent.value_rstats <- get_sentiment(word_rstats.df)
+#  
+# most.positive_rstats <- word.df[sent.value_rstats == max(sent.value_rstats)]
+#  
+# most.positive_rstats
+
+```
+
+
+```{r}
+
+most.negative <- word.df[sent.value <= min(sent.value)] 
+
+most.negative 
+
+```
+
+```{r, echo= FALSE}
+
+# most.negative_rstats <- word.df[sent.value_rstats <= min(sent.value_rstats)] 
+# 
+# most.negative_rstats 
+
+```
+
+
+
+```{r}
+sent.value
+```
+
+```{r, echo= FALSE}
+# sent.value_rstats 
+```
+
+```{r}
+positive.tweets <- word.df[sent.value > 0]
+
+head(positive.tweets)
+```
+
+```{r, echo= FALSE}
+# positive.tweets_rstats <- word.df[sent.value_rstats > 0]
+# 
+# head(positive.tweets_rstats)
+```
+
+
+```{r}
+negative.tweets <- word.df[sent.value < 0] 
+head(negative.tweets)
+```
+
+```{r, echo= FALSE}
+# negative.tweets_rstats <- word.df[sent.value_rstats < 0] 
+# head(negative.tweets_rstats)
+```
+
+
+```{r}
+neutral.tweets <- word.df[sent.value == 0] 
+head(neutral.tweets)
+```
+
+
+```{r, echo= FALSE}
+# neutral.tweets_rstats <- word.df[sent.value_rstats == 0] 
+# head(neutral.tweets_rstats)
+```
+
+
+
+```{r}
+category_senti <- ifelse(sent.value < 0, "Negative", ifelse(sent.value > 0, "Positive", "Neutral"))
+ 
+head(category_senti)
+```
+
+
+
+```{r, echo= FALSE}
+# category_senti_rstats <- ifelse(sent.value_rstats < 0, "Negative", ifelse(sent.value > 0, "Positive", "Neutral"))
+#  
+# head(category_senti_rstats)
+```
+
+
+
+
+```{r}
+
+head(category_senti)
+
+category_senti2 <- cbind(tweets,category_senti) 
+
+head(category_senti2) #tweets category_senti senti
+
+```
+
+
+```{r, echo= FALSE}
+
+# head(category_senti_rstats)
+# 
+# category_senti2_rstats <- cbind(tweets,category_senti_rstats) 
+# 
+# head(category_senti2_rstats) #tweets category_senti senti
+
+```
+
+
+
+```{r}
+sentiment_categories <- table(category_senti)
+sentiment_categories
+```
+
+
+```{r, echo= FALSE}
+# sentiment_categories_rstats <- table(category_senti_rstats)
+# sentiment_categories_rstats
+```
+
+
+
+There is more percentage of positive sentiments in the tweets on both CVSHealth and CVSAetna. 
+
+
+
+```{r}
+plot(table(category_senti), main="Twitter Sentiments")
+```
+
+
+
+```{r}
+pie(sentiment_categories, main="Twitter Sentiments", labels=c("Negative","Neutral","Positive"), cex=0.8)
+
+```
+
+
+
+
+
+
